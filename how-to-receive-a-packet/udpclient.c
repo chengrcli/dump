@@ -22,6 +22,7 @@ struct state
 	int src_port;
 	int polling;
 	int busy_poll;
+	int interval;
 
 	pthread_spinlock_t lock;
 	struct stddev stddev;
@@ -147,6 +148,9 @@ void thread_loop(void *userdata)
 				stddev_add(&state->stddev_packet, t1 - tp);
 			}
 			pthread_spin_unlock(&state->lock);
+			if(state->interval > 0){
+				usleep(state->interval);
+			}
 		}
 		close(fd);
 	}
@@ -158,11 +162,13 @@ int main(int argc, const char *argv[])
 	int polling = 0;
 	int busy_poll = 0;
 	int packet_timestamp = 0;
+	int interval = 0;
 
 	static struct option long_options[] = {
 		{"src-port", required_argument, 0, 's'},
 		{"polling", no_argument, 0, 'p'},
 		{"busy-poll", required_argument, 0, 'b'},
+		{"interval", required_argument, 0, 'i'},
 		{"timestamp", no_argument, 0, 't'},
 		{NULL, 0, 0, 0}};
 	const char *optstring = optstring_from_long_options(long_options);
@@ -191,6 +197,9 @@ int main(int argc, const char *argv[])
 
 		case 't':
 			packet_timestamp = 1;
+			break;
+		case 'i':
+			interval = atoi(optarg);
 			break;
 
 		default:
@@ -225,6 +234,7 @@ int main(int argc, const char *argv[])
 		state->target_addr = &target_addrs[t];
 		state->polling = polling;
 		state->busy_poll = busy_poll;
+		state->interval = interval;
 		if (base_src_port > 0) {
 			state->src_port = base_src_port + t;
 		}
